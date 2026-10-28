@@ -1,0 +1,7 @@
+reportlab>=4.0.0
+firebase-admin>=6.0.0
+google-cloud-firestore>=2.11.0
+requests>=2.28.0
+python-dotenv>=1.0.0
+pillow>=9.0.0
+pandas>=2.0.0

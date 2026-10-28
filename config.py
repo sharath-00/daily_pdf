@@ -1,0 +1,40 @@
+import os
+from dotenv import load_dotenv
+
+# Load .env file if available
+load_dotenv()
+
+class Config:
+    # ThingsBoard Settings
+    THINGSBOARD_URL = os.getenv("THINGSBOARD_URL", "https://schnelliot.in").rstrip("/")
+    THINGSBOARD_USERNAME = os.getenv("THINGSBOARD_USERNAME", "vinoth.joel@schnellenergy.com")
+    THINGSBOARD_PASSWORD = os.getenv("THINGSBOARD_PASSWORD", "vinoth555")
+    THINGSBOARD_DEVICE_TYPE = os.getenv("THINGSBOARD_DEVICE_TYPE", "CCMS") # or Panel, default empty to query all
+    BBMP_CUSTOMER_ID = os.getenv("BBMP_CUSTOMER_ID", "e2119df0-45c3-11f0-94dc-77130b2f47e9")
+    
+    # Firebase Settings
+    FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "schnelliot-380113")
+    FIREBASE_DATABASE_ID = os.getenv("FIREBASE_DATABASE_ID", "smartlights")
+    FIREBASE_COLLECTION_ID = os.getenv("FIREBASE_COLLECTION_ID", "tickets")
+    TARGET_CUSTOMER = os.getenv("TARGET_CUSTOMER", "Bangalore (BBMP)")
+    
+    # Firebase Service Account (Can be a file path or raw JSON string for GitHub Secrets)
+    FIREBASE_SERVICE_ACCOUNT_KEY = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")
+    FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "")
+    
+    # Analysis Thresholds
+    OFFLINE_DAYS_THRESHOLD = int(os.getenv("OFFLINE_DAYS_THRESHOLD", "7"))
+    LONG_PENDING_TICKET_DAYS = int(os.getenv("LONG_PENDING_TICKET_DAYS", "7"))
+    
+    # Telemetry Filtering & Exclusion Settings
+    # If True, excludes Power Failure (PF) panels from chronic offline reports
+    EXCLUDE_PF_PANELS = os.getenv("EXCLUDE_PF_PANELS", "true").lower() in ("true", "1", "yes")
+    
+    # Mode Settings
+    # If True, forces mock data generator; if False, attempts live APIs and falls back if credentials missing/invalid
+    FORCE_MOCK_DATA = os.getenv("FORCE_MOCK_DATA", "false").lower() in ("true", "1", "yes")
+    
+    # PDF Output Settings
+    OUTPUT_PDF_PATH = os.getenv("OUTPUT_PDF_PATH", "daily_meeting_operations_report.pdf")
+    REPORT_TITLE = os.getenv("REPORT_TITLE", "Daily Operations & Telemetry Review")
+    ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME", "Schnell Energy Equipments")

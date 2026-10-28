@@ -1,0 +1,26 @@
+# Secrets & Environment
+.env
+*.env
+service.json
+
+# JSON data files (as requested)
+*.json
+
+# PDF documents (as requested)
+*.pdf
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Image renders
+*.png
+
+# OS / Editor artifacts
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
