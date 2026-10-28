@@ -14,10 +14,6 @@ on:
         default: 'true'
         type: boolean
 
-  # 3. Scheduled Daily Execution at 04:30 UTC (10:00 AM IST) for Daily Standup
-  schedule:
-    - cron: '30 4 * * 1-6'
-
 permissions:
   contents: write
   actions: read
