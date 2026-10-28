@@ -25,6 +25,18 @@ class GoogleSheetsClient:
         self.client = None
 
     def authenticate(self) -> bool:
+        # Check if environment variable contains the JSON credentials (e.g. from GitHub Secrets)
+        env_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+        if env_json:
+            try:
+                info = json.loads(env_json)
+                creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+                self.client = gspread.authorize(creds)
+                logger.info("Successfully authenticated with Google Sheets API via GOOGLE_SERVICE_ACCOUNT_JSON environment variable.")
+                return True
+            except Exception as e:
+                logger.warning(f"Failed to authenticate using GOOGLE_SERVICE_ACCOUNT_JSON env variable: {e}")
+
         if not os.path.exists(self.service_account_file):
             logger.warning(f"Service account file '{self.service_account_file}' not found.")
             return False

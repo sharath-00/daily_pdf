@@ -5,3 +5,6 @@ requests>=2.28.0
 python-dotenv>=1.0.0
 pillow>=9.0.0
 pandas>=2.0.0
+gspread>=6.0.0
+google-auth>=2.20.0
+pymupdf>=1.23.0

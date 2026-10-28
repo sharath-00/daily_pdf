@@ -1,0 +1,142 @@
+name: Generate Daily Operations PDF Report
+
+on:
+  # 1. External API Dispatch (e.g. POST https://api.github.com/repos/{owner}/{repo}/dispatches)
+  repository_dispatch:
+    types: [generate_pdf, external_trigger, daily_report, execute]
+
+  # 2. Workflow Dispatch (Manual trigger via GitHub UI or Actions API)
+  workflow_dispatch:
+    inputs:
+      force_live:
+        description: 'Force fresh live data fetch from APIs'
+        required: false
+        default: 'true'
+        type: boolean
+
+  # 3. Scheduled Daily Execution at 04:30 UTC (10:00 AM IST) for Daily Standup
+  schedule:
+    - cron: '30 4 * * 1-6'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  generate_pdf:
+    name: Fetch Real-Time Data & Build Executive PDF
+    runs-on: ubuntu-latest
+
+    env:
+      # Enforce strictly live real-time API queries (no cached / mock data)
+      FORCE_MOCK_DATA: 'false'
+      
+      # ThingsBoard API configuration (Use GitHub Secrets if defined, otherwise fall back to production defaults)
+      THINGSBOARD_URL: ${{ secrets.THINGSBOARD_URL || 'https://schnelliot.in' }}
+      THINGSBOARD_USERNAME: ${{ secrets.THINGSBOARD_USERNAME || 'vinoth.joel@schnellenergy.com' }}
+      THINGSBOARD_PASSWORD: ${{ secrets.THINGSBOARD_PASSWORD || 'vinoth555' }}
+      BBMP_CUSTOMER_ID: ${{ secrets.BBMP_CUSTOMER_ID || 'e2119df0-45c3-11f0-94dc-77130b2f47e9' }}
+
+      # Firebase Firestore configuration
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID || 'schnelliot-380113' }}
+      FIREBASE_DATABASE_ID: ${{ secrets.FIREBASE_DATABASE_ID || 'smartlights' }}
+      FIREBASE_COLLECTION_ID: ${{ secrets.FIREBASE_COLLECTION_ID || 'tickets' }}
+      TARGET_CUSTOMER: 'Bangalore (BBMP)'
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
+      # Google Sheets credentials (STOCK(PROJECT))
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+      # Output settings
+      OUTPUT_PDF_PATH: 'daily_meeting_operations_report.pdf'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure Service Account Credentials
+        run: |
+          if [ -n "$GOOGLE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "$GOOGLE_SERVICE_ACCOUNT_JSON" > service.json
+            echo "Service account credentials file successfully created."
+          else
+            echo "GOOGLE_SERVICE_ACCOUNT_JSON secret not provided; will attempt env-based or fallback auth."
+          fi
+
+      - name: Get Current Timestamp (IST)
+        id: timestamp
+        run: |
+          echo "date=$(TZ='Asia/Kolkata' date '+%Y-%m-%d %H:%M IST')" >> $GITHUB_OUTPUT
+          echo "short_date=$(TZ='Asia/Kolkata' date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Execute Live Report Generation (Real-Time Data)
+        run: |
+          echo "=========================================================="
+          echo "Starting Real-Time Daily Operations Report Generation..."
+          echo "Execution Trigger: ${{ github.event_name }}"
+          echo "Timestamp: ${{ steps.timestamp.outputs.date }}"
+          echo "Enforced Real-Time Data (FORCE_MOCK_DATA=false)"
+          echo "=========================================================="
+          
+          python generate_daily_report.py --output daily_meeting_operations_report.pdf
+
+      - name: Verify Generated PDF
+        run: |
+          if [ ! -f "daily_meeting_operations_report.pdf" ]; then
+            echo "ERROR: daily_meeting_operations_report.pdf was not generated!"
+            exit 1
+          fi
+          PDF_SIZE=$(stat -c%s "daily_meeting_operations_report.pdf")
+          echo "PDF generated successfully. File size: $PDF_SIZE bytes."
+
+      - name: Upload PDF Report as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily_meeting_operations_report-${{ steps.timestamp.outputs.short_date }}-run${{ github.run_number }}
+          path: daily_meeting_operations_report.pdf
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish PDF to Latest GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: latest
+          name: "Daily Operations Report (Latest)"
+          body: |
+            ## BBMP CCMS Smart Streetlighting - Executive Operations Report
+            
+            - **Generated At:** ${{ steps.timestamp.outputs.date }}
+            - **Trigger Type:** `${{ github.event_name }}`
+            - **Data Freshness:** Live real-time telemetry from ThingsBoard, Firebase Firestore, and Google Sheets `STOCK(PROJECT)`
+            
+            ### Direct Download Link
+            Download the latest compiled PDF directly:
+            [daily_meeting_operations_report.pdf](https://github.com/${{ github.repository }}/releases/download/latest/daily_meeting_operations_report.pdf)
+          files: daily_meeting_operations_report.pdf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write GitHub Step Summary
+        run: |
+          echo "## 📊 Daily Operations & Telemetry Review PDF Generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ✅ Successfully Generated" >> $GITHUB_STEP_SUMMARY
+          echo "- **Generated At:** \`${{ steps.timestamp.outputs.date }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger Event:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Report File:** \`daily_meeting_operations_report.pdf\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 Download Links" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Direct Release Download:** [Download Latest PDF](https://github.com/${{ github.repository }}/releases/download/latest/daily_meeting_operations_report.pdf)" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Workflow Run Artifact:** Download \`daily_meeting_operations_report\` from the Artifacts section below." >> $GITHUB_STEP_SUMMARY
