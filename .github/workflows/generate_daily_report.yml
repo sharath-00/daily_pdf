@@ -13,6 +13,11 @@ on:
         required: false
         default: 'true'
         type: boolean
+      send_email:
+        description: 'Send generated PDF report via email'
+        required: false
+        default: 'false'
+        type: boolean
 
 permissions:
   contents: write
@@ -42,6 +47,19 @@ jobs:
 
       # Google Sheets credentials (STOCK(PROJECT))
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+      # Email (SMTP) Configuration
+      ENABLE_EMAIL: ${{ secrets.ENABLE_EMAIL || 'false' }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER || secrets.SMTP_HOST || 'smtp.gmail.com' }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_USE_TLS: ${{ secrets.SMTP_USE_TLS || 'true' }}
+      SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL || 'false' }}
+      SENDER_EMAIL: ${{ secrets.SENDER_EMAIL || secrets.EMAIL_SENDER }}
+      RECIPIENTS: ${{ secrets.RECIPIENTS || secrets.EMAIL_RECIPIENTS }}
+      EMAIL_CC: ${{ secrets.EMAIL_CC }}
+      EMAIL_SUBJECT: ${{ secrets.EMAIL_SUBJECT || 'Daily Operations & Telemetry Review - Bangalore (BBMP)' }}
 
       # Output settings
       OUTPUT_PDF_PATH: 'daily_meeting_operations_report.pdf'
@@ -85,7 +103,13 @@ jobs:
           echo "Enforced Real-Time Data (FORCE_MOCK_DATA=false)"
           echo "=========================================================="
           
-          python generate_daily_report.py --output daily_meeting_operations_report.pdf
+          EXTRA_ARGS=""
+          if [ "${{ github.event.inputs.send_email }}" = "true" ] || [ "${{ env.ENABLE_EMAIL }}" = "true" ]; then
+            echo "Email dispatch enabled for this execution."
+            EXTRA_ARGS="--email"
+          fi
+          
+          python generate_daily_report.py --output daily_meeting_operations_report.pdf $EXTRA_ARGS
 
       - name: Verify Generated PDF
         run: |

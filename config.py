@@ -38,3 +38,17 @@ class Config:
     OUTPUT_PDF_PATH = os.getenv("OUTPUT_PDF_PATH", "daily_meeting_operations_report.pdf")
     REPORT_TITLE = os.getenv("REPORT_TITLE", "Daily Operations & Telemetry Review")
     ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME", "Schnell Energy Equipments")
+    
+    # Email (SMTP) Settings
+    ENABLE_EMAIL = os.getenv("ENABLE_EMAIL", "true").lower() in ("true", "1", "yes")
+    SMTP_HOST = os.getenv("SMTP_SERVER", os.getenv("SMTP_HOST", "smtp.gmail.com"))
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+    SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "false").lower() in ("true", "1", "yes")
+    EMAIL_SENDER = os.getenv("SENDER_EMAIL", os.getenv("EMAIL_SENDER", ""))
+    _raw_recipients = os.getenv("RECIPIENTS", os.getenv("EMAIL_RECIPIENTS", ""))
+    EMAIL_RECIPIENTS = [r.strip() for r in _raw_recipients.split(",") if r.strip()]
+    EMAIL_CC = [c.strip() for c in os.getenv("EMAIL_CC", "").split(",") if c.strip()]
+    EMAIL_SUBJECT = os.getenv("EMAIL_SUBJECT", "Daily Operations & Telemetry Review - Bangalore (BBMP)")

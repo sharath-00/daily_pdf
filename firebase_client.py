@@ -9,8 +9,15 @@ import base64
 import logging
 from datetime import datetime
 import requests
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+    HAS_FIREBASE_ADMIN = True
+except (ImportError, Exception):
+    firebase_admin = None
+    credentials = None
+    firestore = None
+    HAS_FIREBASE_ADMIN = False
 from config import Config
 from mock_data import get_mock_tickets_data
 
@@ -32,7 +39,12 @@ class FirebaseClient:
         Initializes Firebase Admin SDK if credentials exist.
         If credentials are not supplied, falls back to direct Firestore REST API.
         """
-        if firebase_admin._apps:
+        if not HAS_FIREBASE_ADMIN:
+            logger.info("Direct Firestore REST API will be utilized for ticket queries.")
+            self.db = None
+            return
+
+        if firebase_admin and firebase_admin._apps:
             try:
                 self.db = firestore.client(database=self.database_id)
                 return

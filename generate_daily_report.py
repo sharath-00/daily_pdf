@@ -12,6 +12,7 @@ from firebase_client import FirebaseClient
 from google_sheets_client import GoogleSheetsClient
 from analytics import AnalyticsEngine
 from pdf_generator import ReportGenerator
+from email_sender import EmailSender
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("DailyReportOrchestrator")
@@ -20,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Daily Operations Review PDF Report for Standup Meetings.")
     parser.add_argument("--output", "-o", default=Config.OUTPUT_PDF_PATH, help="Output PDF file path")
     parser.add_argument("--mock", action="store_true", help="Force using mock telemetry and ticket data")
+    parser.add_argument("--email", action="store_true", help="Send the generated PDF report via email")
     args = parser.parse_args()
 
     if args.mock:
@@ -31,13 +33,13 @@ def main():
     print("="*70 + "\n")
 
     # 1. Fetch Telemetry Data
-    logger.info("Step 1/4: Fetching CCMS panel telemetry from ThingsBoard...")
+    logger.info("Step 1/5: Fetching CCMS panel telemetry from ThingsBoard (real-time)...")
     tb_client = ThingsBoardClient()
     panels = tb_client.fetch_panels_telemetry()
     logger.info(f"Loaded {len(panels)} panel records.")
 
     # 2. Fetch Tickets Data
-    logger.info("Step 2/4: Fetching grievance tickets from Firebase Firestore...")
+    logger.info("Step 2/5: Fetching grievance tickets from Firebase Firestore (real-time)...")
     fb_client = FirebaseClient()
     tickets = fb_client.fetch_tickets()
     bbmp_totals = fb_client.get_bbmp_totals()
@@ -87,6 +89,12 @@ def main():
     print("\n" + "="*70)
     print(f"  SUCCESS: Executive PDF generated at -> {pdf_path}")
     print("="*70 + "\n")
+
+    # 6. Optional Email Dispatch
+    if args.email or Config.ENABLE_EMAIL:
+        logger.info("Email dispatch enabled. Sending executive PDF to configured recipients...")
+        mailer = EmailSender()
+        mailer.send_report_email(pdf_path=pdf_path, insights=insights, materials_data=materials_data)
 
     return 0
 

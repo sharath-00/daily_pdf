@@ -53,7 +53,7 @@ This system orchestrates real-time IoT telemetry from **ThingsBoard**, grievance
 ├── google_sheets_client.py       # Google Sheets API connector for stock inventory
 ├── mock_data.py                  # Realistic offline fallback dataset
 ├── pdf_generator.py              # ReportLab 3-page executive PDF layout engine
-├── quick_build_pdf.py            # Rapid local PDF generation using cached data
+├── quick_build_pdf.py            # Rapid PDF generation using live real-time APIs
 ├── requirements.txt              # Python package dependencies
 ├── schnell_logo.jpg              # Corporate branding asset
 ├── .env.example                  # Template for required environment variables
