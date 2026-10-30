@@ -246,11 +246,13 @@ class ReportGenerator:
 
         # 6. Section 4: Zone-wise Breakdown of Offline CCMS Panels (> 7 Days)
         story.extend(self._build_chronic_panels_section())
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 8))
 
         # 7. Section 5: Zone-wise Breakdown of Sahaya Tickets
         story.extend(self._build_chronic_tickets_section())
-        story.append(Spacer(1, 10))
+
+        # Explicit PageBreak before Section 6 so Store Inventory starts cleanly on Page 3
+        story.append(PageBreak())
 
         # 8. Section 6: Detailed Store Materials Stock Inventory Report (Google Sheets Synced)
         if self.materials_data and self.materials_data.get("status") == "SUCCESS":
@@ -568,7 +570,8 @@ class ReportGenerator:
     def _build_chronic_panels_section(self) -> list:
         flow = []
         c_count = self.telemetry.get("chronic_panels_count", 0)
-        sec4_title = f"<b>4. Zone-wise Breakdown of Offline CCMS Panels (&gt; {Config.OFFLINE_DAYS_THRESHOLD} Days Inactive: {c_count} Panels)</b>"
+        pf_total = self.telemetry.get("pf_panels_count", 0)
+        sec4_title = f"<b>4. Zone-wise Breakdown of Offline CCMS Panels (&gt; {Config.OFFLINE_DAYS_THRESHOLD} Days: {c_count} Total | {pf_total} Offline PF)</b>"
         flow.append(Paragraph(sec4_title, self.styles["SectionHeading"]))
 
         detailed_zones = self.telemetry.get("detailed_zone_breakdown", [])
@@ -582,9 +585,10 @@ class ReportGenerator:
                 Paragraph("<b>Total CCMS</b>", self.styles["TableHeader"]),
                 Paragraph("<b>Online Rate</b>", self.styles["TableHeader"]),
                 Paragraph("<b>Offline &gt; 7D</b>", self.styles["TableHeader"]),
+                Paragraph("<b>Offline PF</b>", self.styles["TableHeader"]),
                 Paragraph("<b>Aging Split (7-14d | 14-30d | &gt;30d)</b>", self.styles["TableHeader"]),
                 Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Primary Fault / Field Action</b>", self.styles["TableHeader"])
+                Paragraph("<b>Primary Field Action</b>", self.styles["TableHeader"])
             ]
         ]
 
@@ -600,6 +604,7 @@ class ReportGenerator:
                 Paragraph(f"<b>{z['total']:,}</b>", self.styles["TableCell"]),
                 Paragraph(f"<font color='{on_color}'><b>{z['online_pct']}%</b></font>", self.styles["TableCellBold"]),
                 Paragraph(f"<font color='{chr_color}'><b>{z['chronic_count']}</b></font> <font size='6.5' color='#64748B'>({z['chronic_share']}%)</font>", self.styles["TableCellBold"]),
+                Paragraph(f"<font color='#DC2626'><b>{z.get('pf_count', 0)} PF</b></font>", self.styles["TableCellBold"]),
                 Paragraph(f"<b>{z['d_7_14']}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{z['d_14_30']}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{z['d_30_plus']}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
                 Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"]),
                 Paragraph(f"<font size='7' color='#334155'>{cause_clean}</font>", self.styles["TableCellSmall"])
@@ -620,26 +625,86 @@ class ReportGenerator:
             Paragraph(f"<b>{tot_all:,}</b>", self.styles["TableCellBold"]),
             Paragraph(f"<font color='#059669'><b>{tot_on_pct}% Online</b></font>", self.styles["TableCellBold"]),
             Paragraph(f"<font color='#DC2626'><b>{c_count} (100%)</b></font>", self.styles["TableCellBold"]),
+            Paragraph(f"<font color='#DC2626'><b>{pf_total} PF</b></font>", self.styles["TableCellBold"]),
             Paragraph(f"<b>{tot_7_14}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{tot_14_30}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{tot_30_plus}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
             Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"]),
             Paragraph("<b>Joint Survey &amp; Feeder Audit</b>", self.styles["TableCellSmallBold"])
         ])
 
-        t = Table(table_data, colWidths=[92, 52, 52, 72, 108, 62, 85])
+        t = Table(table_data, colWidths=[82, 48, 48, 60, 58, 102, 54, 71])
         t_style = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
             ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#CBD5E1")),
             ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#E2E8F0")),
             ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#CBD5E1")),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
             ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#FEF2F2")), # Highlight total row
             ("LINEABOVE", (0, -1), (-1, -1), 0.8, colors.HexColor("#DC2626")),
         ]
         t.setStyle(TableStyle(t_style))
+        flow.append(t)
+
+        # 4.1 Detailed "Offline PF" Panels
+        flow.extend(self._build_pf_panels_table())
+
+        return flow
+
+    def _build_pf_panels_table(self) -> list:
+        flow = []
+        pf_panels = self.telemetry.get("pf_chronic_panels", [])
+        pf_count = len(pf_panels)
+
+        flow.append(Spacer(1, 4))
+        flow.append(Paragraph(
+            f"<b>4.1 Critical \"Offline PF\" Panels (Live Power Outage Telemetry &bull; {pf_count} Total PF Panels)</b>",
+            self.styles["SectionHeading"]
+        ))
+        flow.append(Paragraph(
+            "<font color='#64748B' size='7'>Panels confirmed in Power Failure (0V on all phases / dying gasp pkt 8) &gt; 7 days. Utility / BESCOM outage resolution required:</font>",
+            self.styles["TableCellSmall"]
+        ))
+        flow.append(Spacer(1, 2))
+
+        table_data = [
+            [
+                Paragraph("<b>#</b>", self.styles["TableHeader"]),
+                Paragraph("<b>Panel Meter ID</b>", self.styles["TableHeader"]),
+                Paragraph("<b>Feeder Name</b>", self.styles["TableHeader"]),
+                Paragraph("<b>Zone / Division</b>", self.styles["TableHeader"]),
+                Paragraph("<b>Offline</b>", self.styles["TableHeader"]),
+                Paragraph("<b>Live Telemetry Outage Status</b>", self.styles["TableHeader"]),
+                Paragraph("<b>Action Required</b>", self.styles["TableHeader"]),
+            ]
+        ]
+
+        # Show top 5 chronic PF panels
+        for i, p in enumerate(pf_panels[:5], 1):
+            table_data.append([
+                Paragraph(str(i), self.styles["TableCellSmallBold"]),
+                Paragraph(f"<b>{p.get('panel_id')}</b>", self.styles["TableCellSmallBold"]),
+                Paragraph(p.get("panel_name", "")[:22], self.styles["TableCellSmall"]),
+                Paragraph(p.get("zone", ""), self.styles["TableCellSmall"]),
+                Paragraph(f"<font color='#DC2626'><b>{p.get('offline_days')}d</b></font>", self.styles["TableCellSmallBold"]),
+                Paragraph("<font color='#DC2626'><b>Power Failure (0V / Dying Gasp)</b></font>", self.styles["TableCellSmall"]),
+                Paragraph("BESCOM Feeder Check", self.styles["TableCellSmall"])
+            ])
+
+        t = Table(table_data, colWidths=[18, 80, 105, 87, 45, 110, 78])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#FEF2F2")),
+            ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#FCA5A5")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#E2E8F0")),
+            ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#FCA5A5")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ]))
         flow.append(t)
         return flow
 

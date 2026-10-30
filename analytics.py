@@ -70,7 +70,7 @@ class AnalyticsEngine:
 
         # Detailed zone-wise telemetry stats (total, online, offline, aging, causes)
         zone_stats = defaultdict(lambda: {
-            "total": 0, "online": 0, "offline": 0, "pf": 0,
+            "total": 0, "online": 0, "offline": 0, "pf": 0, "chronic_pf": 0,
             "chronic_count": 0, "d_7_14": 0, "d_14_30": 0, "d_30_plus": 0,
             "offline_days_list": [], "causes": defaultdict(int)
         })
@@ -88,6 +88,8 @@ class AnalyticsEngine:
                     zone_stats[z]["pf"] += 1
                 if days >= self.offline_threshold and (not Config.EXCLUDE_PF_PANELS or not is_pf):
                     zone_stats[z]["chronic_count"] += 1
+                    if is_pf:
+                        zone_stats[z]["chronic_pf"] += 1
                     zone_stats[z]["offline_days_list"].append(days)
                     cause = p.get("root_cause_tag", "Communication Lost")
                     zone_stats[z]["causes"][cause] += 1
@@ -120,7 +122,7 @@ class AnalyticsEngine:
                 "d_30_plus": s["d_30_plus"],
                 "avg_days": round(avg_days, 1),
                 "max_days": max_days,
-                "pf_count": s["pf"],
+                "pf_count": s["chronic_pf"],
                 "top_cause": top_cause
             })
 
@@ -129,6 +131,9 @@ class AnalyticsEngine:
         for p in chronic_panels:
             cause = p.get("root_cause_tag", "Unknown / Communication Inactive")
             cause_counts[cause] += 1
+
+        pf_chronic_panels = [p for p in chronic_panels if p.get("is_pf", False)]
+        non_pf_chronic_panels = [p for p in chronic_panels if not p.get("is_pf", False)]
 
         online_pct = (online / total * 100) if total else 0
         offline_pct = (offline / total * 100) if total else 0
@@ -145,8 +150,11 @@ class AnalyticsEngine:
             "chronic_pct": round(chronic_pct, 1),
             "chronic_of_offline_pct": round(chronic_of_offline_pct, 1),
             "chronic_panels": chronic_panels,
+            "pf_chronic_panels": pf_chronic_panels,
+            "non_pf_chronic_panels": non_pf_chronic_panels,
             "top_chronic_panels": chronic_panels[:10],
-            "pf_panels_count": pf_panels_count,
+            "pf_panels_count": len(pf_chronic_panels),
+            "non_pf_panels_count": len(non_pf_chronic_panels),
             "exclude_pf_panels": Config.EXCLUDE_PF_PANELS,
             "zone_breakdown": dict(sorted(zone_chronic.items(), key=lambda x: x[1], reverse=True)),
             "detailed_zone_breakdown": detailed_zone_breakdown,
@@ -344,6 +352,8 @@ class AnalyticsEngine:
         # 1. Telemetry: Offline Panels > 7 Days Analysis (User requirement: Point 1)
         c_count = telem["chronic_panels_count"]
         c_pct = telem["chronic_of_offline_pct"]
+        pf_cnt = telem.get("pf_panels_count", 0)
+        non_pf_cnt = telem.get("non_pf_panels_count", c_count - pf_cnt)
         top_zone = next(iter(telem["zone_breakdown"].items()), ("None", 0))
 
         if c_count > 0:
@@ -354,9 +364,9 @@ class AnalyticsEngine:
             points.append({
                 "type": "TELEMETRY_ALERT",
                 "category": "CCMS Telemetry (Offline > 7 Days)",
-                "title": f"{c_count} CCMS Panels Offline for > 7 Days ({c_pct}% of offline infrastructure)",
-                "detail": f"Highest chronic density is in '{top_zone[0]}' Zone ({top_zone[1]} panels). Longest uncommunicated panel is '{p_name}' (Offline for {p_days} days — Root cause: {p_cause}). Joint field survey needed.",
-                "badge": f"{c_count} CHRONIC OFFLINE",
+                "title": f"{c_count} CCMS Panels Offline for > 7 Days ({pf_cnt} Offline PF | {non_pf_cnt} Tech Offline)",
+                "detail": f"Out of {c_count} chronic offline panels, {pf_cnt} are confirmed in 'Offline PF' (Power Failure / Feeder Outages with 0V / pkt 8) and {non_pf_cnt} require field hardware/SIM inspection. Highest density is in '{top_zone[0]}' ({top_zone[1]} panels). Longest uncommunicated panel is '{p_name}' (Offline for {p_days} days - {p_cause}).",
+                "badge": f"{c_count} OFFLINE ({pf_cnt} PF)",
                 "badge_color": "#DC2626"
             })
         else:
