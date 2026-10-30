@@ -227,20 +227,13 @@ def fetch_schnell_bbmp_data(output_json="bbmp_realtime_data.json", output_csv="b
         except Exception:
             rv_raw, yv_raw, bv_raw = 0, 0, 0
 
-        # Load known PF panels if available
+        # Dynamic Power Failure (PF) detection purely from live telemetry (no static files)
         is_pf = False
-        pf_file = os.path.join(os.path.dirname(__file__), "pf_panels.json")
-        if os.path.exists(pf_file):
-            try:
-                with open(pf_file, "r", encoding="utf-8") as pf_f:
-                    pf_data = json.load(pf_f)
-                    if (dev_id in pf_data.get("device_ids", []) or 
-                        meter_id in pf_data.get("meter_numbers", []) or 
-                        feeder_label in pf_data.get("feeder_names", [])):
-                        is_pf = True
-            except Exception:
-                pass
-        if not is_pf and pkt_val == "8":
+        if pkt_val == "8":
+            is_pf = True
+        elif not is_active and (rv_raw == 0 and yv_raw == 0 and bv_raw == 0):
+            is_pf = True
+        elif "pf" in fault_code_val.lower() or "power" in fault_code_val.lower():
             is_pf = True
 
         status = "Online" if is_active else "Offline"

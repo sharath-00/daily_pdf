@@ -165,20 +165,6 @@ class ThingsBoardClient:
             panels = []
             now_sec = time.time()
 
-            # Load known PF (Power Failure) panel definitions
-            import os, json
-            pf_file = os.path.join(os.path.dirname(__file__), "pf_panels.json")
-            pf_ids, pf_meters, pf_feeders = set(), set(), set()
-            if os.path.exists(pf_file):
-                try:
-                    with open(pf_file, "r", encoding="utf-8") as f:
-                        pf_info = json.load(f)
-                        pf_ids = set(pf_info.get("device_ids", []))
-                        pf_meters = set(pf_info.get("meter_numbers", []))
-                        pf_feeders = set(pf_info.get("feeder_names", []))
-                except Exception as ex:
-                    logger.warning(f"Could not read pf_panels.json: {ex}")
-
             for device in all_devices:
                 dev_id = device.get("id", {}).get("id")
                 device_name = device.get("name", "Unknown")
@@ -246,10 +232,13 @@ class ThingsBoardClient:
                 except Exception:
                     rv_val, yv_val, bv_val = 0, 0, 0
 
+                # Dynamic Power Failure (PF) detection purely from live telemetry (no static files)
                 is_pf = False
-                if dev_id in pf_ids or device_name in pf_meters or device_label in pf_feeders:
+                if pkt_val == "8":
                     is_pf = True
-                elif pkt_val == "8":
+                elif not is_active and (rv_val == 0 and yv_val == 0 and bv_val == 0):
+                    is_pf = True
+                elif "pf" in fault_code_val.lower() or "power" in fault_code_val.lower():
                     is_pf = True
 
                 # Root cause categorization
