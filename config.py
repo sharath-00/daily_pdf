@@ -27,8 +27,8 @@ class Config:
     LONG_PENDING_TICKET_DAYS = int(os.getenv("LONG_PENDING_TICKET_DAYS", "7"))
     
     # Telemetry Filtering & Exclusion Settings
-    # If False, includes all offline panels in chronic reports (true live total, no hidden panels)
-    EXCLUDE_PF_PANELS = os.getenv("EXCLUDE_PF_PANELS", "false").lower() in ("true", "1", "yes")
+    # If True, excludes confirmed Power Failure (PF / 0V) panels from chronic offline count
+    EXCLUDE_PF_PANELS = os.getenv("EXCLUDE_PF_PANELS", "true").lower() in ("true", "1", "yes")
     
     # Mode Settings
     # If True, forces mock data generator; if False, attempts live APIs and falls back if credentials missing/invalid

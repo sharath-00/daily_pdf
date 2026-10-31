@@ -31,6 +31,7 @@ jobs:
     env:
       # Enforce strictly live real-time API queries (no cached / mock data)
       FORCE_MOCK_DATA: 'false'
+      EXCLUDE_PF_PANELS: ${{ secrets.EXCLUDE_PF_PANELS || 'true' }}
       
       # ThingsBoard API configuration (Use GitHub Secrets if defined, otherwise fall back to production defaults)
       THINGSBOARD_URL: ${{ secrets.THINGSBOARD_URL || 'https://schnelliot.in' }}

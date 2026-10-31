@@ -153,7 +153,8 @@ class AnalyticsEngine:
             "pf_chronic_panels": pf_chronic_panels,
             "non_pf_chronic_panels": non_pf_chronic_panels,
             "top_chronic_panels": chronic_panels[:10],
-            "pf_panels_count": len(pf_chronic_panels),
+            "pf_panels_count": pf_panels_count,
+            "chronic_pf_within_count": len(pf_chronic_panels),
             "non_pf_panels_count": len(non_pf_chronic_panels),
             "exclude_pf_panels": Config.EXCLUDE_PF_PANELS,
             "zone_breakdown": dict(sorted(zone_chronic.items(), key=lambda x: x[1], reverse=True)),
@@ -352,8 +353,7 @@ class AnalyticsEngine:
         # 1. Telemetry: Offline Panels > 7 Days Analysis (User requirement: Point 1)
         c_count = telem["chronic_panels_count"]
         c_pct = telem["chronic_of_offline_pct"]
-        pf_cnt = telem.get("pf_panels_count", 0)
-        non_pf_cnt = telem.get("non_pf_panels_count", c_count - pf_cnt)
+        all_pf_cnt = telem.get("pf_panels_count", 0)
         top_zone = next(iter(telem["zone_breakdown"].items()), ("None", 0))
 
         if c_count > 0:
@@ -361,12 +361,24 @@ class AnalyticsEngine:
             p_name = top_panel.get("panel_name") or top_panel.get("panel_id")
             p_days = top_panel.get("offline_days")
             p_cause = top_panel.get("root_cause_tag", "Power/Comms failure")
+
+            if Config.EXCLUDE_PF_PANELS:
+                title = f"{c_count} Technical CCMS Panels Offline for > 7 Days (Excl. {all_pf_cnt} Utility PF Outages)"
+                detail = f"A total of {c_count} technical CCMS panels are offline for > 7 days requiring field hardware/SIM inspection (excluding {all_pf_cnt} panels with confirmed power failures / 0V). Highest density is in '{top_zone[0]}' ({top_zone[1]} panels). Longest uncommunicated panel is '{p_name}' (Offline for {p_days} days - {p_cause})."
+                badge = f"{c_count} REAL OFFLINE"
+            else:
+                pf_cnt = telem.get("chronic_pf_within_count", len(telem.get("pf_chronic_panels", [])))
+                non_pf_cnt = telem.get("non_pf_panels_count", c_count - pf_cnt)
+                title = f"{c_count} CCMS Panels Offline for > 7 Days ({pf_cnt} Offline PF | {non_pf_cnt} Tech Offline)"
+                detail = f"Out of {c_count} chronic offline panels, {pf_cnt} are confirmed in 'Offline PF' (Power Failure / Feeder Outages with 0V / pkt 8) and {non_pf_cnt} require field hardware/SIM inspection. Highest density is in '{top_zone[0]}' ({top_zone[1]} panels). Longest uncommunicated panel is '{p_name}' (Offline for {p_days} days - {p_cause})."
+                badge = f"{c_count} OFFLINE ({pf_cnt} PF)"
+
             points.append({
                 "type": "TELEMETRY_ALERT",
                 "category": "CCMS Telemetry (Offline > 7 Days)",
-                "title": f"{c_count} CCMS Panels Offline for > 7 Days ({pf_cnt} Offline PF | {non_pf_cnt} Tech Offline)",
-                "detail": f"Out of {c_count} chronic offline panels, {pf_cnt} are confirmed in 'Offline PF' (Power Failure / Feeder Outages with 0V / pkt 8) and {non_pf_cnt} require field hardware/SIM inspection. Highest density is in '{top_zone[0]}' ({top_zone[1]} panels). Longest uncommunicated panel is '{p_name}' (Offline for {p_days} days - {p_cause}).",
-                "badge": f"{c_count} OFFLINE ({pf_cnt} PF)",
+                "title": title,
+                "detail": detail,
+                "badge": badge,
                 "badge_color": "#DC2626"
             })
         else:

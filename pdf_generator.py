@@ -571,7 +571,11 @@ class ReportGenerator:
         flow = []
         c_count = self.telemetry.get("chronic_panels_count", 0)
         pf_total = self.telemetry.get("pf_panels_count", 0)
-        sec4_title = f"<b>4. Zone-wise Breakdown of Offline CCMS Panels (&gt; {Config.OFFLINE_DAYS_THRESHOLD} Days: {c_count} Total | {pf_total} Offline PF)</b>"
+
+        if Config.EXCLUDE_PF_PANELS:
+            sec4_title = f"<b>4. Zone-wise Breakdown of Technical Offline CCMS Panels (&gt; {Config.OFFLINE_DAYS_THRESHOLD} Days: {c_count} Total &bull; Excl. {pf_total} Utility PF)</b>"
+        else:
+            sec4_title = f"<b>4. Zone-wise Breakdown of Offline CCMS Panels (&gt; {Config.OFFLINE_DAYS_THRESHOLD} Days: {c_count} Total | {pf_total} Offline PF)</b>"
         flow.append(Paragraph(sec4_title, self.styles["SectionHeading"]))
 
         detailed_zones = self.telemetry.get("detailed_zone_breakdown", [])
@@ -579,18 +583,31 @@ class ReportGenerator:
             flow.append(Paragraph("<font color='#059669'><b>No chronic offline panels detected. All CCMS units communicating normally.</b></font>", self.styles["TableCell"]))
             return flow
 
-        table_data = [
-            [
-                Paragraph("<b>Zone / Division</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Total CCMS</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Online Rate</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Offline &gt; 7D</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Offline PF</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Aging Split (7-14d | 14-30d | &gt;30d)</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Primary Field Action</b>", self.styles["TableHeader"])
+        if Config.EXCLUDE_PF_PANELS:
+            table_data = [
+                [
+                    Paragraph("<b>Zone / Division</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Total CCMS</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Online Rate</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Offline &gt; 7D</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Aging Split (7-14d | 14-30d | &gt;30d)</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Primary Field Action</b>", self.styles["TableHeader"])
+                ]
             ]
-        ]
+        else:
+            table_data = [
+                [
+                    Paragraph("<b>Zone / Division</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Total CCMS</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Online Rate</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Offline &gt; 7D</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Offline PF</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Aging Split (7-14d | 14-30d | &gt;30d)</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"]),
+                    Paragraph("<b>Primary Field Action</b>", self.styles["TableHeader"])
+                ]
+            ]
 
         # Only list zones with active panels / chronic panels
         active_zones = [z for z in detailed_zones if z.get("total", 0) > 0]
@@ -599,16 +616,27 @@ class ReportGenerator:
             chr_color = "#DC2626" if z["chronic_count"] > 10 else ("#D97706" if z["chronic_count"] > 0 else "#059669")
             cause_clean = z["top_cause"].replace("Long-Term Inactive / ", "").replace("Chronic Inactivity / ", "")
 
-            table_data.append([
-                Paragraph(f"<b>{z['zone']}</b>", self.styles["TableCellBold"]),
-                Paragraph(f"<b>{z['total']:,}</b>", self.styles["TableCell"]),
-                Paragraph(f"<font color='{on_color}'><b>{z['online_pct']}%</b></font>", self.styles["TableCellBold"]),
-                Paragraph(f"<font color='{chr_color}'><b>{z['chronic_count']}</b></font> <font size='6.5' color='#64748B'>({z['chronic_share']}%)</font>", self.styles["TableCellBold"]),
-                Paragraph(f"<font color='#DC2626'><b>{z.get('pf_count', 0)} PF</b></font>", self.styles["TableCellBold"]),
-                Paragraph(f"<b>{z['d_7_14']}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{z['d_14_30']}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{z['d_30_plus']}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
-                Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"]),
-                Paragraph(f"<font size='7' color='#334155'>{cause_clean}</font>", self.styles["TableCellSmall"])
-            ])
+            if Config.EXCLUDE_PF_PANELS:
+                table_data.append([
+                    Paragraph(f"<b>{z['zone']}</b>", self.styles["TableCellBold"]),
+                    Paragraph(f"<b>{z['total']:,}</b>", self.styles["TableCell"]),
+                    Paragraph(f"<font color='{on_color}'><b>{z['online_pct']}%</b></font>", self.styles["TableCellBold"]),
+                    Paragraph(f"<font color='{chr_color}'><b>{z['chronic_count']}</b></font> <font size='6.5' color='#64748B'>({z['chronic_share']}%)</font>", self.styles["TableCellBold"]),
+                    Paragraph(f"<b>{z['d_7_14']}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{z['d_14_30']}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{z['d_30_plus']}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
+                    Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"]),
+                    Paragraph(f"<font size='7' color='#334155'>{cause_clean}</font>", self.styles["TableCellSmall"])
+                ])
+            else:
+                table_data.append([
+                    Paragraph(f"<b>{z['zone']}</b>", self.styles["TableCellBold"]),
+                    Paragraph(f"<b>{z['total']:,}</b>", self.styles["TableCell"]),
+                    Paragraph(f"<font color='{on_color}'><b>{z['online_pct']}%</b></font>", self.styles["TableCellBold"]),
+                    Paragraph(f"<font color='{chr_color}'><b>{z['chronic_count']}</b></font> <font size='6.5' color='#64748B'>({z['chronic_share']}%)</font>", self.styles["TableCellBold"]),
+                    Paragraph(f"<font color='#DC2626'><b>{z.get('pf_count', 0)} PF</b></font>", self.styles["TableCellBold"]),
+                    Paragraph(f"<b>{z['d_7_14']}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{z['d_14_30']}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{z['d_30_plus']}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
+                    Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"]),
+                    Paragraph(f"<font size='7' color='#334155'>{cause_clean}</font>", self.styles["TableCellSmall"])
+                ])
 
         # Citywide Total Row
         tot_all = self.telemetry.get("total_panels", 0)
@@ -620,18 +648,30 @@ class ReportGenerator:
         tot_avg_days = round(sum(all_days) / len(all_days), 1) if all_days else 0
         tot_max_days = max(all_days) if all_days else 0
 
-        table_data.append([
-            Paragraph("<b>COMBINED TOTAL</b>", self.styles["TableCellBold"]),
-            Paragraph(f"<b>{tot_all:,}</b>", self.styles["TableCellBold"]),
-            Paragraph(f"<font color='#059669'><b>{tot_on_pct}% Online</b></font>", self.styles["TableCellBold"]),
-            Paragraph(f"<font color='#DC2626'><b>{c_count} (100%)</b></font>", self.styles["TableCellBold"]),
-            Paragraph(f"<font color='#DC2626'><b>{pf_total} PF</b></font>", self.styles["TableCellBold"]),
-            Paragraph(f"<b>{tot_7_14}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{tot_14_30}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{tot_30_plus}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
-            Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"]),
-            Paragraph("<b>Joint Survey &amp; Feeder Audit</b>", self.styles["TableCellSmallBold"])
-        ])
+        if Config.EXCLUDE_PF_PANELS:
+            table_data.append([
+                Paragraph("<b>COMBINED TOTAL</b>", self.styles["TableCellBold"]),
+                Paragraph(f"<b>{tot_all:,}</b>", self.styles["TableCellBold"]),
+                Paragraph(f"<font color='#059669'><b>{tot_on_pct}% Online</b></font>", self.styles["TableCellBold"]),
+                Paragraph(f"<font color='#DC2626'><b>{c_count} (100%)</b></font>", self.styles["TableCellBold"]),
+                Paragraph(f"<b>{tot_7_14}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{tot_14_30}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{tot_30_plus}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
+                Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"]),
+                Paragraph("<b>Field Survey &amp; SIM Audit</b>", self.styles["TableCellSmallBold"])
+            ])
+            t = Table(table_data, colWidths=[92, 52, 52, 72, 108, 62, 85])
+        else:
+            table_data.append([
+                Paragraph("<b>COMBINED TOTAL</b>", self.styles["TableCellBold"]),
+                Paragraph(f"<b>{tot_all:,}</b>", self.styles["TableCellBold"]),
+                Paragraph(f"<font color='#059669'><b>{tot_on_pct}% Online</b></font>", self.styles["TableCellBold"]),
+                Paragraph(f"<font color='#DC2626'><b>{c_count} (100%)</b></font>", self.styles["TableCellBold"]),
+                Paragraph(f"<font color='#DC2626'><b>{pf_total} PF</b></font>", self.styles["TableCellBold"]),
+                Paragraph(f"<b>{tot_7_14}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{tot_14_30}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{tot_30_plus}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
+                Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"]),
+                Paragraph("<b>Joint Survey &amp; Feeder Audit</b>", self.styles["TableCellSmallBold"])
+            ])
+            t = Table(table_data, colWidths=[82, 48, 48, 60, 58, 102, 54, 71])
 
-        t = Table(table_data, colWidths=[82, 48, 48, 60, 58, 102, 54, 71])
         t_style = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
             ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#CBD5E1")),
@@ -648,8 +688,9 @@ class ReportGenerator:
         t.setStyle(TableStyle(t_style))
         flow.append(t)
 
-        # 4.1 Detailed "Offline PF" Panels
-        flow.extend(self._build_pf_panels_table())
+        # 4.1 Detailed "Offline PF" Panels (Only included if NOT excluded)
+        if not Config.EXCLUDE_PF_PANELS:
+            flow.extend(self._build_pf_panels_table())
 
         return flow
 
