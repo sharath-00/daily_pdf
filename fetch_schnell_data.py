@@ -217,24 +217,12 @@ def fetch_schnell_bbmp_data(output_json="bbmp_realtime_data.json", output_csv="b
             offline_days = 0 if is_active else 7
             last_activity_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Power failure (PF) detection
+        # Power failure (PF) detection adhering strictly to ThingsBoard ccmsOfflineFilter logic (pkt == 8)
         fault_code_val = str(attrs.get("faultCode") or "").strip()
         pkt_val = str(attrs.get("pkt") or "").strip()
-        try:
-            rv_raw = float(attrs.get("rv") or 0)
-            yv_raw = float(attrs.get("yv") or 0)
-            bv_raw = float(attrs.get("bv") or 0)
-        except Exception:
-            rv_raw, yv_raw, bv_raw = 0, 0, 0
 
-        # Dynamic Power Failure (PF) detection purely from live telemetry (no static files)
-        is_pf = False
-        if pkt_val == "8":
-            is_pf = True
-        elif not is_active and (rv_raw == 0 and yv_raw == 0 and bv_raw == 0):
-            is_pf = True
-        elif "pf" in fault_code_val.lower() or "power" in fault_code_val.lower():
-            is_pf = True
+        # Dynamic Power Failure (PF) detection matching ThingsBoard dashboard native filter
+        is_pf = (pkt_val == "8") or ("pf" in fault_code_val.lower())
 
         status = "Online" if is_active else "Offline"
         if is_active:

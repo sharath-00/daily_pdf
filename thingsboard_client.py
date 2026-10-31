@@ -222,24 +222,12 @@ class ThingsBoardClient:
                     offline_days = 0 if is_active else 7
                     last_activity_time = datetime.now()
 
-                # Power failure (PF) detection
+                # Power failure (PF) detection adhering strictly to ThingsBoard ccmsOfflineFilter logic (pkt == 8)
                 fault_code_val = str(attrs.get("faultCode") or "").strip()
                 pkt_val = str(attrs.get("pkt") or "").strip()
-                try:
-                    rv_val = float(attrs.get("rv") or 0)
-                    yv_val = float(attrs.get("yv") or 0)
-                    bv_val = float(attrs.get("bv") or 0)
-                except Exception:
-                    rv_val, yv_val, bv_val = 0, 0, 0
 
-                # Dynamic Power Failure (PF) detection purely from live telemetry (no static files)
-                is_pf = False
-                if pkt_val == "8":
-                    is_pf = True
-                elif not is_active and (rv_val == 0 and yv_val == 0 and bv_val == 0):
-                    is_pf = True
-                elif "pf" in fault_code_val.lower() or "power" in fault_code_val.lower():
-                    is_pf = True
+                # Dynamic Power Failure (PF) detection matching ThingsBoard dashboard native filter
+                is_pf = (pkt_val == "8") or ("pf" in fault_code_val.lower())
 
                 # Root cause categorization
                 if is_active:
