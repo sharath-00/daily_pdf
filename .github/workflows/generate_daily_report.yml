@@ -105,7 +105,7 @@ jobs:
           echo "=========================================================="
           
           EXTRA_ARGS=""
-          if [ "${{ github.event.inputs.send_email }}" = "true" ] || [ "${{ env.ENABLE_EMAIL }}" = "true" ]; then
+          if [ "${{ github.event.inputs.send_email }}" = "true" ] || [ "${{ github.event.client_payload.send_email }}" = "true" ] || [ "${{ env.ENABLE_EMAIL }}" = "true" ]; then
             echo "Email dispatch enabled for this execution."
             EXTRA_ARGS="--email"
           fi
