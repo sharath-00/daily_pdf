@@ -104,11 +104,6 @@ def fetch_schnell_bbmp_data(output_json="bbmp_realtime_data.json", output_csv="b
                 {"type": "SERVER_ATTRIBUTE", "key": "simName"},
                 {"type": "SERVER_ATTRIBUTE", "key": "operatingMode"},
                 {"type": "SERVER_ATTRIBUTE", "key": "condition"},
-                # Shared Scope Attributes
-                {"type": "SHARED_ATTRIBUTE", "key": "wardName"},
-                {"type": "SHARED_ATTRIBUTE", "key": "zoneName"},
-                {"type": "SHARED_ATTRIBUTE", "key": "region"},
-                {"type": "SHARED_ATTRIBUTE", "key": "location"},
                 # Real-Time Telemetry Timeseries
                 {"type": "TIME_SERIES", "key": "systime"},
                 {"type": "TIME_SERIES", "key": "rv"},
@@ -133,9 +128,11 @@ def fetch_schnell_bbmp_data(output_json="bbmp_realtime_data.json", output_csv="b
                     eid = item.get("entityId", {}).get("id")
                     latest = item.get("latest", {})
                     combined = {}
-                    for scope in ("SERVER_ATTRIBUTE", "SHARED_ATTRIBUTE", "CLIENT_ATTRIBUTE", "TIME_SERIES"):
-                        for k, v in latest.get(scope, {}).items():
-                            combined[k] = v.get("value")
+                    for scope in latest:
+                        for k, v in latest[scope].items():
+                            val = v.get("value")
+                            if val not in (None, ""):
+                                combined[k] = val
                     res[eid] = combined
         except Exception as e:
             logger.warning(f"Batch query exception: {e}")
@@ -168,9 +165,9 @@ def fetch_schnell_bbmp_data(output_json="bbmp_realtime_data.json", output_csv="b
             g_name = groups[0].get("name", "").strip()
             if g_name and "park" not in g_name.lower():
                 zone = g_name
-        # Standardize zone names into the two official BBMP regions: EAST Region and Bommanahalli Region
-        z_check = (str(zone or "") + " " + str(meter_id) + " " + str(feeder_label)).lower()
-        if "bommanahalli" in z_check or "bommanahali" in z_check:
+        # Standardize zone names directly from ThingsBoard's server attribute 'region'
+        raw_region = attrs.get("region") or attrs.get("zoneName") or ""
+        if "bommanahali" in str(raw_region).lower() or "bommanahalli" in str(raw_region).lower():
             zone = "Bommanahalli Region"
         else:
             zone = "EAST Region"
@@ -179,42 +176,39 @@ def fetch_schnell_bbmp_data(output_json="bbmp_realtime_data.json", output_csv="b
         location = attrs.get("location") or "N/A"
         sim_provider = attrs.get("gsmProvider") or attrs.get("simName") or "Vi India"
 
-        # Connectivity calculation (Prioritizing systime to match ThingsBoard dashboard)
+        # Connectivity calculation matching ThingsBoard daily reporting cycle (systime > yesterday)
         systime_val = attrs.get("systime")
         last_ms_val = attrs.get("lastActivityTime") or attrs.get("lastConnectTime")
-        raw_active = attrs.get("active")
         now_sec = time.time()
-        
+        now_ms = now_sec * 1000.0
+
         if systime_val:
             try:
                 systime_sec = float(systime_val)
+                if systime_sec > 1e11:
+                    systime_sec /= 1000.0
                 diff_sec = max(0, now_sec - systime_sec)
                 diff_hours = diff_sec / 3600.0
                 offline_days = int(diff_sec / 86400.0)
                 last_activity_str = datetime.fromtimestamp(systime_sec).strftime("%Y-%m-%d %H:%M:%S")
-                is_active = (diff_hours <= 24)
             except Exception:
-                diff_hours = 168
+                diff_hours = 168.0
                 offline_days = 7
                 last_activity_str = "Unknown"
-                is_active = False
         elif last_ms_val:
             try:
                 last_ms_float = float(last_ms_val)
                 diff_ms = max(0, now_ms - last_ms_float)
-                diff_hours = diff_ms / (1000 * 3600)
-                offline_days = int(diff_ms / (1000 * 3600 * 24))
+                diff_hours = diff_ms / (1000 * 3600.0)
+                offline_days = int(diff_ms / (1000 * 86400.0))
                 last_activity_str = datetime.fromtimestamp(last_ms_float / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
-                is_active = (diff_hours <= 24)
             except Exception:
-                diff_hours = 168
+                diff_hours = 168.0
                 offline_days = 7
                 last_activity_str = "Unknown"
-                is_active = False
         else:
-            is_active = (raw_active in (True, "true", "True") or dev.get("active", False))
-            diff_hours = 0 if is_active else 168
-            offline_days = 0 if is_active else 7
+            diff_hours = 168.0
+            offline_days = 7
             last_activity_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
 
         # Power failure (PF) detection adhering strictly to ThingsBoard ccmsOfflineFilter logic (pkt == 8)
@@ -223,6 +217,10 @@ def fetch_schnell_bbmp_data(output_json="bbmp_realtime_data.json", output_csv="b
 
         # Dynamic Power Failure (PF) detection matching ThingsBoard dashboard native filter
         is_pf = (pkt_val == "8") or ("pf" in fault_code_val.lower())
+
+        # Online percentage rule: Online = Total Panels - (All types of offline panels including PF)
+        # A panel is active/online ONLY if it communicated within 24h AND is NOT in Power Failure (not is_pf)
+        is_active = (offline_days == 0) and not is_pf
 
         status = "Online" if is_active else "Offline"
         if is_active:

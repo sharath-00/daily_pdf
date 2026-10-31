@@ -36,10 +36,18 @@ class AnalyticsEngine:
 
     def analyze_telemetry(self) -> dict:
         total = len(self.panels)
-        online = sum(1 for p in self.panels if p.get("is_active", False))
-        offline = total - online
+        # All types of offline panels (including PF):
+        all_offline_panels = [p for p in self.panels if not p.get("is_active", False)]
+        offline = len(all_offline_panels)
+        # Online panels = Total panels - (All type of offline panels including PF)
+        online = total - offline
+        online_pct = (online / total * 100) if total else 0
+        offline_pct = (offline / total * 100) if total else 0
 
-        # Identify Chronic Power Failure (PF) panels (> 7 days)
+        # Total Power Failure (PF) panels across all durations
+        total_pf_count = sum(1 for p in self.panels if p.get("is_pf", False))
+
+        # Chronic Power Failure (PF) panels (> 7 days)
         pf_panels_count = sum(
             1 for p in self.panels 
             if p.get("is_pf", False) and not p.get("is_active", False) and p.get("offline_days", 0) >= self.offline_threshold
@@ -154,6 +162,7 @@ class AnalyticsEngine:
             "non_pf_chronic_panels": non_pf_chronic_panels,
             "top_chronic_panels": chronic_panels[:10],
             "pf_panels_count": pf_panels_count,
+            "total_pf_count": total_pf_count,
             "chronic_pf_within_count": len(pf_chronic_panels),
             "non_pf_panels_count": len(non_pf_chronic_panels),
             "exclude_pf_panels": Config.EXCLUDE_PF_PANELS,

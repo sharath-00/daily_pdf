@@ -328,7 +328,7 @@ class ReportGenerator:
 
         card1_data = [
             [Paragraph("TOTAL CCMS PANELS", self.styles["KPITitle"])],
-            [Paragraph(f"{t_tot}", self.styles["KPIValue"])],
+            [Paragraph(f"{t_tot:,}", self.styles["KPIValue"])],
             [Paragraph(f"<font color='#059669'><b>{t_on_pct}% Online</b></font>", self.styles["KPISub"])]
         ]
         card2_data = [
@@ -591,8 +591,7 @@ class ReportGenerator:
                     Paragraph("<b>Online Rate</b>", self.styles["TableHeader"]),
                     Paragraph("<b>Offline &gt; 7D</b>", self.styles["TableHeader"]),
                     Paragraph("<b>Aging Split (7-14d | 14-30d | &gt;30d)</b>", self.styles["TableHeader"]),
-                    Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"]),
-                    Paragraph("<b>Primary Field Action</b>", self.styles["TableHeader"])
+                    Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"])
                 ]
             ]
         else:
@@ -604,8 +603,7 @@ class ReportGenerator:
                     Paragraph("<b>Offline &gt; 7D</b>", self.styles["TableHeader"]),
                     Paragraph("<b>Offline PF</b>", self.styles["TableHeader"]),
                     Paragraph("<b>Aging Split (7-14d | 14-30d | &gt;30d)</b>", self.styles["TableHeader"]),
-                    Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"]),
-                    Paragraph("<b>Primary Field Action</b>", self.styles["TableHeader"])
+                    Paragraph("<b>Avg Duration</b>", self.styles["TableHeader"])
                 ]
             ]
 
@@ -623,8 +621,7 @@ class ReportGenerator:
                     Paragraph(f"<font color='{on_color}'><b>{z['online_pct']}%</b></font>", self.styles["TableCellBold"]),
                     Paragraph(f"<font color='{chr_color}'><b>{z['chronic_count']}</b></font> <font size='6.5' color='#64748B'>({z['chronic_share']}%)</font>", self.styles["TableCellBold"]),
                     Paragraph(f"<b>{z['d_7_14']}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{z['d_14_30']}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{z['d_30_plus']}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
-                    Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"]),
-                    Paragraph(f"<font size='7' color='#334155'>{cause_clean}</font>", self.styles["TableCellSmall"])
+                    Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"])
                 ])
             else:
                 table_data.append([
@@ -634,8 +631,7 @@ class ReportGenerator:
                     Paragraph(f"<font color='{chr_color}'><b>{z['chronic_count']}</b></font> <font size='6.5' color='#64748B'>({z['chronic_share']}%)</font>", self.styles["TableCellBold"]),
                     Paragraph(f"<font color='#DC2626'><b>{z.get('pf_count', 0)} PF</b></font>", self.styles["TableCellBold"]),
                     Paragraph(f"<b>{z['d_7_14']}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{z['d_14_30']}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{z['d_30_plus']}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
-                    Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"]),
-                    Paragraph(f"<font size='7' color='#334155'>{cause_clean}</font>", self.styles["TableCellSmall"])
+                    Paragraph(f"<font color='#DC2626'><b>{z['avg_days']} Days</b></font><br/><font size='6.5' color='#64748B'>Max {z['max_days']}d</font>", self.styles["TableCellSmall"])
                 ])
 
         # Citywide Total Row
@@ -655,10 +651,9 @@ class ReportGenerator:
                 Paragraph(f"<font color='#059669'><b>{tot_on_pct}% Online</b></font>", self.styles["TableCellBold"]),
                 Paragraph(f"<font color='#DC2626'><b>{c_count} (100%)</b></font>", self.styles["TableCellBold"]),
                 Paragraph(f"<b>{tot_7_14}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{tot_14_30}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{tot_30_plus}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
-                Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"]),
-                Paragraph("<b>Field Survey &amp; SIM Audit</b>", self.styles["TableCellSmallBold"])
+                Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"])
             ])
-            t = Table(table_data, colWidths=[92, 52, 52, 72, 108, 62, 85])
+            t = Table(table_data, colWidths=[115, 65, 68, 85, 120, 70])
         else:
             table_data.append([
                 Paragraph("<b>COMBINED TOTAL</b>", self.styles["TableCellBold"]),
@@ -667,10 +662,9 @@ class ReportGenerator:
                 Paragraph(f"<font color='#DC2626'><b>{c_count} (100%)</b></font>", self.styles["TableCellBold"]),
                 Paragraph(f"<font color='#DC2626'><b>{pf_total} PF</b></font>", self.styles["TableCellBold"]),
                 Paragraph(f"<b>{tot_7_14}</b> <font size='6.5' color='#64748B'>(7-14d)</font> &bull; <b>{tot_14_30}</b> <font size='6.5' color='#64748B'>(14-30d)</font> &bull; <font color='#DC2626'><b>{tot_30_plus}</b> (&gt;30d)</font>", self.styles["TableCellSmall"]),
-                Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"]),
-                Paragraph("<b>Joint Survey &amp; Feeder Audit</b>", self.styles["TableCellSmallBold"])
+                Paragraph(f"<font color='#DC2626'><b>{tot_avg_days} Days</b></font><br/><font size='6.5' color='#64748B'>Max {tot_max_days}d</font>", self.styles["TableCellSmall"])
             ])
-            t = Table(table_data, colWidths=[82, 48, 48, 60, 58, 102, 54, 71])
+            t = Table(table_data, colWidths=[95, 55, 58, 70, 65, 115, 65])
 
         t_style = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
@@ -766,8 +760,7 @@ class ReportGenerator:
                 Paragraph("<b>Total</b>", self.styles["TableHeader"]),
                 Paragraph("<b>Resolved</b>", self.styles["TableHeader"]),
                 Paragraph("<b>Pending</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Resolution Rate</b>", self.styles["TableHeader"]),
-                Paragraph("<b>Contractor / Assigned In-Charge</b>", self.styles["TableHeader"])
+                Paragraph("<b>Resolution Rate</b>", self.styles["TableHeader"])
             ]
         ]
 
@@ -780,8 +773,7 @@ class ReportGenerator:
                 Paragraph(f"<b>{z['total']}</b>", self.styles["TableCell"]),
                 Paragraph(f"<font color='#059669'><b>{z['resolved']}</b></font>", self.styles["TableCellBold"]),
                 Paragraph(f"<font color='{pend_color}'><b>{pend_cnt}</b></font>", self.styles["TableCellBold"]),
-                Paragraph(f"<font color='{z['status_color']}'><b>{z['res_rate']}%</b></font><br/><font size='6.5' color='{z['status_color']}'><b>{z['status_label']}</b></font>", self.styles["TableCellSmall"]),
-                Paragraph(f"<font size='7.5' color='#334155'>{z['vendors_summary']}</font>", self.styles["TableCellSmall"])
+                Paragraph(f"<font color='{z['status_color']}'><b>{z['res_rate']}%</b></font><br/><font size='6.5' color='{z['status_color']}'><b>{z['status_label']}</b></font>", self.styles["TableCellSmall"])
             ])
 
         # Sahaya Citywide Summary Row
@@ -795,11 +787,10 @@ class ReportGenerator:
             Paragraph(f"<b>{s_tot}</b>", self.styles["TableCellBold"]),
             Paragraph(f"<font color='#059669'><b>{s_res}</b></font>", self.styles["TableCellBold"]),
             Paragraph(f"<font color='#D97706'><b>{s_pend}</b></font>", self.styles["TableCellBold"]),
-            Paragraph(f"<font color='#D97706'><b>{s_rate}%</b></font><br/><font size='6.5' color='#D97706'><b>Citywide SLA</b></font>", self.styles["TableCellSmall"]),
-            Paragraph("<b>97 Backlogged Grievances across 5 Zones</b>", self.styles["TableCellSmallBold"])
+            Paragraph(f"<font color='#D97706'><b>{s_rate}%</b></font><br/><font size='6.5' color='#D97706'><b>Citywide SLA</b></font>", self.styles["TableCellSmall"])
         ])
 
-        t = Table(table_data, colWidths=[105, 48, 52, 50, 80, 188])
+        t = Table(table_data, colWidths=[143, 90, 95, 95, 100])
         t_style = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
             ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#CBD5E1")),

@@ -131,11 +131,7 @@ class ThingsBoardClient:
                         {"type": "SERVER_ATTRIBUTE", "key": "wardName"},
                         {"type": "SERVER_ATTRIBUTE", "key": "zoneName"},
                         {"type": "SERVER_ATTRIBUTE", "key": "region"},
-                        {"type": "SERVER_ATTRIBUTE", "key": "location"},
-                        {"type": "SHARED_ATTRIBUTE", "key": "wardName"},
-                        {"type": "SHARED_ATTRIBUTE", "key": "zoneName"},
-                        {"type": "SHARED_ATTRIBUTE", "key": "region"},
-                        {"type": "SHARED_ATTRIBUTE", "key": "location"}
+                        {"type": "SERVER_ATTRIBUTE", "key": "location"}
                     ]
                 }
                 out = {}
@@ -146,9 +142,11 @@ class ThingsBoardClient:
                             eid = item.get("entityId", {}).get("id")
                             latest = item.get("latest", {})
                             item_attrs = {}
-                            for scope in ("SERVER_ATTRIBUTE", "SHARED_ATTRIBUTE", "CLIENT_ATTRIBUTE", "TIME_SERIES"):
-                                for k, val_dict in latest.get(scope, {}).items():
-                                    item_attrs[k] = val_dict.get("value")
+                            for scope in latest:
+                                for k, val_dict in latest[scope].items():
+                                    v = val_dict.get("value")
+                                    if v not in (None, ""):
+                                        item_attrs[k] = v
                             out[eid] = item_attrs
                 except Exception as ex:
                     logger.warning(f"Batch attribute query warning: {ex}")
@@ -181,45 +179,40 @@ class ThingsBoardClient:
                     if g_name and "park" not in g_name.lower():
                         zone = g_name
 
-                # Standardize zone names into the two official BBMP regions: EAST Region and Bommanahalli Region
-                z_check = (str(zone or "") + " " + str(device_name) + " " + str(device_label)).lower()
-                if "bommanahalli" in z_check or "bommanahali" in z_check:
+                # Standardize zone names directly from ThingsBoard's server attribute 'region'
+                raw_region = attrs.get("region") or attrs.get("zoneName") or ""
+                if "bommanahali" in str(raw_region).lower() or "bommanahalli" in str(raw_region).lower():
                     zone = "Bommanahalli Region"
                 else:
                     zone = "EAST Region"
 
-                # Prioritize systime (the actual electrical packet timestamp displayed in ThingsBoard dashboard)
+                # ThingsBoard native activity & connectivity status (systime > yesterday)
                 systime_val = attrs.get("systime")
                 last_ms_val = attrs.get("lastActivityTime") or attrs.get("lastConnectTime")
-                raw_active = attrs.get("active")
+                now_ms = now_sec * 1000.0
 
                 if systime_val:
                     try:
                         systime_sec = float(systime_val)
+                        if systime_sec > 1e11:
+                            systime_sec /= 1000.0
                         diff_sec = max(0, now_sec - systime_sec)
-                        diff_hours = diff_sec / 3600.0
                         offline_days = int(diff_sec / 86400.0)
                         last_activity_time = datetime.fromtimestamp(systime_sec)
-                        is_active = (diff_hours <= 24)
                     except Exception:
                         offline_days = 7
                         last_activity_time = datetime.now()
-                        is_active = False
                 elif last_ms_val:
                     try:
                         last_ms_float = float(last_ms_val)
                         diff_ms = max(0, now_ms - last_ms_float)
-                        diff_hours = diff_ms / (1000 * 3600)
-                        offline_days = int(diff_ms / (1000 * 3600 * 24))
+                        offline_days = int(diff_ms / (1000 * 86400.0))
                         last_activity_time = datetime.fromtimestamp(last_ms_float / 1000.0)
-                        is_active = (diff_hours <= 24)
                     except Exception:
                         offline_days = 7
                         last_activity_time = datetime.now()
-                        is_active = False
                 else:
-                    is_active = (raw_active in (True, "true", "True") or device.get("active", False))
-                    offline_days = 0 if is_active else 7
+                    offline_days = 7
                     last_activity_time = datetime.now()
 
                 # Power failure (PF) detection adhering strictly to ThingsBoard ccmsOfflineFilter logic (pkt == 8)
@@ -228,6 +221,10 @@ class ThingsBoardClient:
 
                 # Dynamic Power Failure (PF) detection matching ThingsBoard dashboard native filter
                 is_pf = (pkt_val == "8") or ("pf" in fault_code_val.lower())
+
+                # Online percentage rule: Online = Total Panels - (All types of offline panels including PF)
+                # A panel is active/online ONLY if it communicated within 24h AND is NOT in Power Failure (not is_pf)
+                is_active = (offline_days == 0) and not is_pf
 
                 # Root cause categorization
                 if is_active:
